@@ -1,0 +1,56 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres:latest
+    restart: always
+    env_file:
+      - ./config/postgres.env
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: always
+    env_file:
+      - ./config/pgadmin.env
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+
+  api:
+    image: wikihealth/api
+    restart: always
+    env_file:
+      - ./config/api.env
+    depends_on:
+      - postgres
+
+  webapp:
+    image: wikihealth/webapp
+    volumes:
+      - webapp-site:/webapp/dist
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/nginx.conf
+      - webapp-site:/app/webapp
+    ports:
+      - 80:80
+      - 443:443
+    depends_on:
+      - api
+      - webapp
+      - pgadmin
+
+  watchtower:
+    image: containrrr/watchtower
+    env_file:
+      - ./config/watchtower.env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  postgres-data:
+  pgadmin-data:
+  webapp-site:
