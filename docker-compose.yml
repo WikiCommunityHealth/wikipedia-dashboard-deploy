@@ -1,25 +1,6 @@
 version: '3'
 
 services:
-
-  mongo:
-    image: mongo
-    restart: always
-    ports:
-      - 27017:27017
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: example
-
-  mongo-express:
-    image: mongo-express
-    restart: always
-    ports:
-      - 8081:8081
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: root
-      ME_CONFIG_MONGODB_ADMINPASSWORD: example
-
   postgres:
     image: postgres:latest
     restart: always
@@ -37,19 +18,15 @@ services:
       - ./config/pgadmin.env
     volumes:
       - pgadmin-data:/var/lib/pgadmin
-
-  api:
-    image: dash-api
-    restart: always
-    env_file:
-      - ./config/api.env
-    depends_on:
-      - postgres
+    ports:
+      - 8083:80
 
   webapp:
-    image: dash-webapp
+    image: wiki-dash-webapp
     volumes:
       - webapp-site:/webapp/dist
+    ports:
+      - 8082:8080
 
   nginx:
     image: nginx:latest
@@ -60,16 +37,33 @@ services:
       - 80:80
       - 443:443
     depends_on:
-      - api
       - webapp
       - pgadmin
 
-  watchtower:
-    image: containrrr/watchtower
-    env_file:
-      - ./config/watchtower.env
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+  graphql-engine:
+    image: hasura/graphql-engine:v1.3.3
+    ports:
+    - "8080:8080"
+    depends_on:
+    - "postgres"
+    restart: always
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: postgres://postgres:postgrespassword@postgres:5432/postgres
+      ## enable the console served by server
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true" # set to "false" to disable console
+      ## enable debugging mode. It is recommended to disable this in production
+      HASURA_GRAPHQL_DEV_MODE: "true"
+      HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
+      ## uncomment next line to set an admin secret
+      # HASURA_GRAPHQL_ADMIN_SECRET: myadminsecretkey
+
+  # watchtower:
+  #   image: containrrr/watchtower
+  #   env_file:
+  #     - ./config/watchtower.env
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+
 
 volumes:
   postgres-data:
